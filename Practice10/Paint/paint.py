@@ -25,25 +25,110 @@ drawing = False
 start_pos = None
 last_pos = None
 
-screen.fill(WHITE)
+canvas = pygame.Surface((WIDTH, HEIGHT))
+canvas.fill(WHITE)
 
 
-def draw_text():
-    font = pygame.font.SysFont("Verdana", 16)
+def draw_text(surface):
+    font = pygame.font.SysFont("Verdana", 14)
 
-    text = f"Tool: {tool} | Size: {radius} | 1 Brush  2 Rect  3 Circle  E Eraser"
-    img = font.render(text, True, BLACK)
-    screen.blit(img, (10, 10))
+    surface.blit(font.render(f"Tool: {tool} | Size: {radius}", True, BLACK), (10, 10))
+    surface.blit(font.render("1 Brush 2 Rect 3 Circle 4 Square", True, BLACK), (10, 30))
+    surface.blit(font.render("5 RTri 6 ETri 7 Rhombus E Eraser", True, BLACK), (10, 50))
+    surface.blit(font.render("Colors: R G B Y W", True, BLACK), (10, 70))
 
-    text2 = "Colors: R Red | G Green | B Blue | Y Yellow | W White"
-    img2 = font.render(text2, True, BLACK)
-    screen.blit(img2, (10, 30))
+
+def draw_rectangle(surface, start, end):
+    x1, y1 = start
+    x2, y2 = end
+
+    rect = (
+        min(x1, x2),
+        min(y1, y2),
+        abs(x2 - x1),
+        abs(y2 - y1)
+    )
+
+    pygame.draw.rect(surface, current_color, rect, radius)
+
+
+def draw_square(surface, start, end):
+    x1, y1 = start
+    x2, y2 = end
+
+    size = min(abs(x2 - x1), abs(y2 - y1))
+
+    if x2 < x1:
+        x1 -= size
+    if y2 < y1:
+        y1 -= size
+
+    pygame.draw.rect(surface, current_color, (x1, y1, size, size), radius)
+
+
+def draw_circle(surface, start, end):
+    x1, y1 = start
+    x2, y2 = end
+
+    circle_radius = int(((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5)
+    pygame.draw.circle(surface, current_color, start, circle_radius, radius)
+
+
+def draw_right_triangle(surface, start, end):
+    x1, y1 = start
+    x2, y2 = end
+
+    points = [
+        (x1, y1),
+        (x1, y2),
+        (x2, y2)
+    ]
+
+    pygame.draw.polygon(surface, current_color, points, radius)
+
+
+def draw_equilateral_triangle(surface, start, end):
+    x1, y1 = start
+    x2, y2 = end
+
+    width = abs(x2 - x1)
+
+    if x2 >= x1:
+        left = x1
+        right = x1 + width
+    else:
+        left = x1 - width
+        right = x1
+
+    points = [
+        ((left + right) // 2, y1),
+        (left, y2),
+        (right, y2)
+    ]
+
+    pygame.draw.polygon(surface, current_color, points, radius)
+
+
+def draw_rhombus(surface, start, end):
+    x1, y1 = start
+    x2, y2 = end
+
+    center_x = (x1 + x2) // 2
+    center_y = (y1 + y2) // 2
+
+    points = [
+        (center_x, y1),
+        (x2, center_y),
+        (center_x, y2),
+        (x1, center_y)
+    ]
+
+    pygame.draw.polygon(surface, current_color, points, radius)
 
 
 while True:
-    temp_screen = screen.copy()
-
     for event in pygame.event.get():
+
         if event.type == pygame.QUIT:
             pygame.quit()
             sys.exit()
@@ -75,6 +160,14 @@ while True:
                 tool = "rectangle"
             elif event.key == pygame.K_3:
                 tool = "circle"
+            elif event.key == pygame.K_4:
+                tool = "square"
+            elif event.key == pygame.K_5:
+                tool = "right_triangle"
+            elif event.key == pygame.K_6:
+                tool = "equilateral_triangle"
+            elif event.key == pygame.K_7:
+                tool = "rhombus"
             elif event.key == pygame.K_e:
                 tool = "eraser"
 
@@ -93,17 +186,16 @@ while True:
             elif event.button == 5:
                 radius = max(1, radius - 2)
 
-        if event.type == pygame.MOUSEMOTION:
-            if drawing:
-                if tool == "brush":
-                    pygame.draw.line(screen, current_color, last_pos, event.pos, radius * 2)
-                    pygame.draw.circle(screen, current_color, event.pos, radius)
-                    last_pos = event.pos
+        if event.type == pygame.MOUSEMOTION and drawing:
+            if tool == "brush":
+                pygame.draw.line(canvas, current_color, last_pos, event.pos, radius * 2)
+                pygame.draw.circle(canvas, current_color, event.pos, radius)
+                last_pos = event.pos
 
-                elif tool == "eraser":
-                    pygame.draw.line(screen, WHITE, last_pos, event.pos, radius * 2)
-                    pygame.draw.circle(screen, WHITE, event.pos, radius)
-                    last_pos = event.pos
+            elif tool == "eraser":
+                pygame.draw.line(canvas, WHITE, last_pos, event.pos, radius * 2)
+                pygame.draw.circle(canvas, WHITE, event.pos, radius)
+                last_pos = event.pos
 
         if event.type == pygame.MOUSEBUTTONUP:
             if event.button == 1:
@@ -111,49 +203,45 @@ while True:
                 end_pos = event.pos
 
                 if tool == "rectangle":
-                    x1, y1 = start_pos
-                    x2, y2 = end_pos
-
-                    rect_x = min(x1, x2)
-                    rect_y = min(y1, y2)
-                    rect_w = abs(x2 - x1)
-                    rect_h = abs(y2 - y1)
-
-                    pygame.draw.rect(screen, current_color, (rect_x, rect_y, rect_w, rect_h), radius)
-
+                    draw_rectangle(canvas, start_pos, end_pos)
                 elif tool == "circle":
-                    x1, y1 = start_pos
-                    x2, y2 = end_pos
+                    draw_circle(canvas, start_pos, end_pos)
+                elif tool == "square":
+                    draw_square(canvas, start_pos, end_pos)
+                elif tool == "right_triangle":
+                    draw_right_triangle(canvas, start_pos, end_pos)
+                elif tool == "equilateral_triangle":
+                    draw_equilateral_triangle(canvas, start_pos, end_pos)
+                elif tool == "rhombus":
+                    draw_rhombus(canvas, start_pos, end_pos)
 
-                    circle_radius = int(((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5)
+    display = canvas.copy()
 
-                    pygame.draw.circle(screen, current_color, start_pos, circle_radius, radius)
-
-    display = screen.copy()
-
-    if drawing and tool in ["rectangle", "circle"]:
+    if drawing and tool in [
+        "rectangle",
+        "circle",
+        "square",
+        "right_triangle",
+        "equilateral_triangle",
+        "rhombus"
+    ]:
         mouse_pos = pygame.mouse.get_pos()
 
         if tool == "rectangle":
-            x1, y1 = start_pos
-            x2, y2 = mouse_pos
-
-            rect_x = min(x1, x2)
-            rect_y = min(y1, y2)
-            rect_w = abs(x2 - x1)
-            rect_h = abs(y2 - y1)
-
-            pygame.draw.rect(display, current_color, (rect_x, rect_y, rect_w, rect_h), radius)
-
+            draw_rectangle(display, start_pos, mouse_pos)
         elif tool == "circle":
-            x1, y1 = start_pos
-            x2, y2 = mouse_pos
+            draw_circle(display, start_pos, mouse_pos)
+        elif tool == "square":
+            draw_square(display, start_pos, mouse_pos)
+        elif tool == "right_triangle":
+            draw_right_triangle(display, start_pos, mouse_pos)
+        elif tool == "equilateral_triangle":
+            draw_equilateral_triangle(display, start_pos, mouse_pos)
+        elif tool == "rhombus":
+            draw_rhombus(display, start_pos, mouse_pos)
 
-            circle_radius = int(((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5)
+    draw_text(display)
 
-            pygame.draw.circle(display, current_color, start_pos, circle_radius, radius)
-
-    draw_text()
-
+    screen.blit(display, (0, 0))
     pygame.display.flip()
     clock.tick(60)
